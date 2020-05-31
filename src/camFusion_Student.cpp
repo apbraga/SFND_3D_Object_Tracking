@@ -133,7 +133,16 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    /*
+
+    */
+   for(auto kptMatch : kptMatches){
+       if(boundingBox.roi.contains(kptsCurr[match.trainIdx].pt){
+           boundingBox.kptMatches.push_back(match);
+       }
+   }
+
+
 }
 
 
@@ -141,7 +150,28 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, 
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
-    // ...
+    /*
+
+    */
+   std::vector<doubles> ratios;
+   for(auto match_out: kptMatches) {
+        cv::KeyPoint prevFrame_point_out = kptsPrev[match.queryIdx];
+        cv::KeyPoint currFrame_point_out = kptsCurr[match.trainIdx];
+        for(auto match_in : kptMatches) {
+            cv::KeyPoint prevFrame_point_in = kptsPrev[match.queryIdx];
+            cv::KeyPoint currFrame_point_in = kptsCurr[match.trainIdx];
+
+            vector<double> distances = {cv::norm(currFrame_point_out-currFrame_point_in), cv::norm(prevFrame_point_out-prevFrame_point_in)};
+
+            if(distances[1] > std::numeric_limits<double>::epsilon() && distances[0] >= 100.){
+                ratios.push_back(distances[0]/distances[1]);
+            }
+        }
+   }
+
+   std::sort(ratios.begin(), ratios.end());
+
+   TTC = (-1.0 / frameRate) / ( 1 - ratios[ratios.size()/2]);
 }
 
 
@@ -149,7 +179,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
     /*
-    sort prev and curr lidar points based on their x component and use de median to calculate the TTC
+    sort prev and curr lidar points based on their x component and use the median to calculate the TTC
     */
    
    std::sort(lidarPointsPrev.begin(), lidarPointsPrev.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x;});
