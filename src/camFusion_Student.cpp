@@ -148,7 +148,13 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    /*
+    sort prev and curr lidar points based on their x component and use de median to calculate the TTC
+    */
+   
+   std::sort(lidarPointsPrev.begin(), lidarPointsPrev.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x;});
+   std::sort(lidarPointsCurr.begin(), lidarPointsCurr.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x;});
+   TTC = lidarPointsCurr[lidarPointsCurr.size()/2].x*(1.0/frameRate)/(lidarPointsPrev[lidarPointsPrev.size()/2].x - lidarPointsCurr[lidarPointsCurr.size()/2].x);
 }
 
 
