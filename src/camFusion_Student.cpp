@@ -157,10 +157,12 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     /*
     Loops over all matches to check in which bounding box its cointained on prev and current images
     */
-    int pt_box_match[prevFrame.boudingBoxes.size()][currFrame.boudingBoxes.size()] = {}
+    
+    std::vector<std::vector<int>> pt_box_match(prevFrame.boundingBoxes.size(), std::vector<int>(currFrame.boundingBoxes.size(),0));
+
     for(auto match: matches) {
-        cv::Keypoint prevFrame_point = prevFrame.keypoints[match.queryIdx];
-        cv::Keypoint currFrame_point = currFrame.keypoints[match.trainIdx];
+        cv::KeyPoint prevFrame_point = prevFrame.keypoints[match.queryIdx];
+        cv::KeyPoint currFrame_point = currFrame.keypoints[match.trainIdx];
         std::vector<int> prev_boxes_ids, curr_boxes_ids;
         
         for(auto box : prevFrame.boundingBoxes){
@@ -193,11 +195,11 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         int count = 0;
         int match_id = 0;
         for(auto curr_id : currFrame.boundingBoxes){
-            if(pt_box_match[prev_id][curr_id] > count){
-                count = pt_box_match[prev_id][curr_id];
-                match_id = curr_id;
+            if(pt_box_match[prev_id.boxID][curr_id.boxID] > count){
+                count = pt_box_match[prev_id.boxID][curr_id.boxID];
+                match_id = curr_id.boxID;
             }
-        bbBestMatches[prev_id] = match_id;
+        bbBestMatches[prev_id.boxID] = match_id;
         }
     }
 }
