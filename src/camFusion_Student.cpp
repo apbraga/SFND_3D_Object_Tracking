@@ -154,5 +154,50 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    /*
+    Loops over all matches to check in which bounding box its cointained on prev and current images
+    */
+    int pt_box_match[prevFrame.boudingBoxes.size()][currFrame.boudingBoxes.size()] = {}
+    for(auto match: matches) {
+        cv::Keypoint prevFrame_point = prevFrame.keypoints[match.queryIdx];
+        cv::Keypoint currFrame_point = currFrame.keypoints[match.trainIdx];
+        std::vector<int> prev_boxes_ids, curr_boxes_ids;
+        
+        for(auto box : prevFrame.boundingBoxes){
+            if(box.roi.contains(prevFrame_point.pt)){
+                prev_boxes_ids.push_back(box.boxID);
+            }
+
+        }
+
+        for(auto box : currFrame.boundingBoxes){
+            if(box.roi.contains(currFrame_point.pt)){
+                curr_boxes_ids.push_back(box.boxID);
+            }
+            
+        }
+
+        if((prev_boxes_ids.size() > 0)  &&  (curr_boxes_ids.size() > 0)){
+            for(auto prev_id : prev_boxes_ids){
+                for(auto curr_id : curr_boxes_ids){
+                    pt_box_match[prev_id][curr_id] += 1 ;
+                }
+            }  
+        }
+    }
+    /*
+    Rank up the combination of boxes with highest hits on prev and current
+    set the top 1 as matching box 
+    */
+    for(auto prev_id : prevFrame.boundingBoxes){
+        int count = 0;
+        int match_id = 0;
+        for(auto curr_id : currFrame.boundingBoxes){
+            if(pt_box_match[prev_id][curr_id] > count){
+                count = pt_box_match[prev_id][curr_id];
+                match_id = curr_id;
+            }
+        bbBestMatches[prev_id] = match_id;
+        }
+    }
 }
