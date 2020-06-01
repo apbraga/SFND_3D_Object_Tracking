@@ -131,18 +131,27 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
 
 // associate a given bounding box with the keypoints it contains
+
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    /*
-
-    */
-   for(auto kptMatch : kptMatches){
-       if(boundingBox.roi.contains(kptsCurr[match.trainIdx].pt){
+   
+    //Add all matches on current frame to a given bounding box if is enclosed
+    
+   double accumulator = 0;
+   int counter = 0;
+   for(auto match : kptMatches){
+       if(boundingBox.roi.contains(kptsCurr[match.trainIdx].pt)){
            boundingBox.kptMatches.push_back(match);
+           counter++;
+           accumulator += cv::norm(kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt);
        }
    }
-
-
+   double mean_distance = accumulator/counter;
+   boundingBox.kptMatches.erase(std::remove_if(boundingBox.kptMatches.begin(),
+          boundingBox.kptMatches.end(),
+          [&mean_distance](cv::DMatch& match) { return match.distance < 0.5 * mean_distance; }),
+      boundingBox.kptMatches.end());
+   
 }
 
 
@@ -151,26 +160,31 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
     /*
-
+    Loops over all matches for the current and previous frame and calculate all the distances between points and their ratios, use media ratio to calculate TTC
     */
-   std::vector<doubles> ratios;
+   std::vector<double> ratios;
    for(auto match_out: kptMatches) {
-        cv::KeyPoint prevFrame_point_out = kptsPrev[match.queryIdx];
-        cv::KeyPoint currFrame_point_out = kptsCurr[match.trainIdx];
+        cv::KeyPoint prevFrame_point_out = kptsPrev[match_out.queryIdx];
+        cv::KeyPoint currFrame_point_out = kptsCurr[match_out.trainIdx];
         for(auto match_in : kptMatches) {
-            cv::KeyPoint prevFrame_point_in = kptsPrev[match.queryIdx];
-            cv::KeyPoint currFrame_point_in = kptsCurr[match.trainIdx];
+            cv::KeyPoint prevFrame_point_in = kptsPrev[match_in.queryIdx];
+            cv::KeyPoint currFrame_point_in = kptsCurr[match_in.trainIdx];
 
-            vector<double> distances = {cv::norm(currFrame_point_out-currFrame_point_in), cv::norm(prevFrame_point_out-prevFrame_point_in)};
+            vector<double> distances = {cv::norm(currFrame_point_out.pt-currFrame_point_in.pt), cv::norm(prevFrame_point_out.pt-prevFrame_point_in.pt)};
 
-            if(distances[1] > std::numeric_limits<double>::epsilon() && distances[0] >= 100.){
+            if(distances[1] > std::numeric_limits<double>::epsilon() && distances[0] >= 100.0){
                 ratios.push_back(distances[0]/distances[1]);
             }
         }
    }
 
-   std::sort(ratios.begin(), ratios.end());
+    if(ratios.size() == 0){
+        TTC = NAN;
+        return;
+    }
 
+   std::sort(ratios.begin(), ratios.end());
+   //std::cout << "test:" << ratios.size() <<std::endl;
    TTC = (-1.0 / frameRate) / ( 1 - ratios[ratios.size()/2]);
 }
 

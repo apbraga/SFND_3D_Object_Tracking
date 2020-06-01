@@ -23,7 +23,7 @@
 using namespace std;
 
 /* MAIN PROGRAM */
-int main(int argc, const char *argv[])
+void object_tracking(string detectorType, string descriptorType, string matcherType, string selectorType, std::ofstream &myfile )
 {
     /* INIT VARIABLES AND DATA STRUCTURES */
 
@@ -76,8 +76,10 @@ int main(int argc, const char *argv[])
 
     /* MAIN LOOP OVER ALL IMAGES */
 
+    int count = 0;
     for (size_t imgIndex = 0; imgIndex <= imgEndIndex - imgStartIndex; imgIndex+=imgStepWidth)
     {
+        count++;
         /* LOAD IMAGE INTO BUFFER */
 
         // assemble filenames for current index
@@ -91,9 +93,11 @@ int main(int argc, const char *argv[])
         // push image into data frame buffer
         DataFrame frame;
         frame.cameraImg = img;
+        if(dataBuffer.size() >= dataBufferSize )
+            dataBuffer.erase(dataBuffer.begin());
         dataBuffer.push_back(frame);
 
-        cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
+        //cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
 
 
         /* DETECT & CLASSIFY OBJECTS */
@@ -103,7 +107,7 @@ int main(int argc, const char *argv[])
         detectObjects((dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->boundingBoxes, confThreshold, nmsThreshold,
                       yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights, bVis);
 
-        cout << "#2 : DETECT & CLASSIFY OBJECTS done" << endl;
+        //cout << "#2 : DETECT & CLASSIFY OBJECTS done" << endl;
 
 
         /* CROP LIDAR POINTS */
@@ -119,7 +123,7 @@ int main(int argc, const char *argv[])
     
         (dataBuffer.end() - 1)->lidarPoints = lidarPoints;
 
-        cout << "#3 : CROP LIDAR POINTS done" << endl;
+        //cout << "#3 : CROP LIDAR POINTS done" << endl;
 
 
         /* CLUSTER LIDAR POINT CLOUD */
@@ -129,18 +133,18 @@ int main(int argc, const char *argv[])
         clusterLidarWithROI((dataBuffer.end()-1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = true;
+        bVis = false;
         if(bVis)
         {
             show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
         }
         bVis = false;
 
-        cout << "#4 : CLUSTER LIDAR POINT CLOUD done" << endl;
+        //cout << "#4 : CLUSTER LIDAR POINT CLOUD done" << endl;
         
         
         // REMOVE THIS LINE BEFORE PROCEEDING WITH THE FINAL PROJECT
-        continue; // skips directly to the next image without processing what comes beneath
+        //continue; // skips directly to the next image without processing what comes beneath
 
         /* DETECT IMAGE KEYPOINTS */
 
@@ -150,17 +154,33 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        //string detectorType = "SHITOMASI";
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
             detKeypointsShiTomasi(keypoints, imgGray, false);
-        }
-        else
+        }else if (detectorType.compare("HARRIS") == 0)
         {
-            //...
+            detKeypointsHarris(keypoints, imgGray, false);
+        }else
+        {
+            detKeypointsModern(keypoints, imgGray, detectorType, false);
         }
 
+        // only keep keypoints on the preceding vehicle
+        bool bFocusOnVehicle = true;
+        cv::Rect vehicleRect(535, 180, 180, 150);
+        if (bFocusOnVehicle)
+        {
+            vector<cv::KeyPoint> keypoints_filtered;
+            for(auto point : keypoints){
+                if(vehicleRect.contains(point.pt)){
+                    keypoints_filtered.push_back(point);
+                }
+            }
+            keypoints = keypoints_filtered;
+        }
+    
         // optional : limit number of keypoints (helpful for debugging and learning)
         bool bLimitKpts = false;
         if (bLimitKpts)
@@ -178,19 +198,19 @@ int main(int argc, const char *argv[])
         // push keypoints and descriptor for current frame to end of data buffer
         (dataBuffer.end() - 1)->keypoints = keypoints;
 
-        cout << "#5 : DETECT KEYPOINTS done" << endl;
+        //cout << "#5 : DETECT KEYPOINTS done" << endl;
 
 
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        //string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
         (dataBuffer.end() - 1)->descriptors = descriptors;
 
-        cout << "#6 : EXTRACT DESCRIPTORS done" << endl;
+        //cout << "#6 : EXTRACT DESCRIPTORS done" << endl;
 
 
         if (dataBuffer.size() > 1) // wait until at least two images have been processed
@@ -199,9 +219,9 @@ int main(int argc, const char *argv[])
             /* MATCH KEYPOINT DESCRIPTORS */
 
             vector<cv::DMatch> matches;
-            string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-            string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
+            //string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
+            //string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            //string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
@@ -210,7 +230,7 @@ int main(int argc, const char *argv[])
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
 
-            cout << "#7 : MATCH KEYPOINT DESCRIPTORS done" << endl;
+            //cout << "#7 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
             
             /* TRACK 3D OBJECT BOUNDING BOXES */
@@ -224,7 +244,7 @@ int main(int argc, const char *argv[])
             // store matches in current data frame
             (dataBuffer.end()-1)->bbMatches = bbBestMatches;
 
-            cout << "#8 : TRACK 3D OBJECT BOUNDING BOXES done" << endl;
+            //cout << "#8 : TRACK 3D OBJECT BOUNDING BOXES done" << endl;
 
 
             /* COMPUTE TTC ON OBJECT IN FRONT */
@@ -266,8 +286,8 @@ int main(int argc, const char *argv[])
                     clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);                    
                     computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                     //// EOF STUDENT ASSIGNMENT
-
-                    bVis = true;
+                    myfile << detectorType << "," << descriptorType << "," << matcherType << "," << selectorType << "," << "Frame " << count  << "," << ttcLidar << "," << ttcCamera << "\n";
+                    bVis = false;
                     if (bVis)
                     {
                         cv::Mat visImg = (dataBuffer.end() - 1)->cameraImg.clone();
@@ -293,5 +313,45 @@ int main(int argc, const char *argv[])
 
     } // eof loop over all images
 
+    //return 0;
+}
+
+
+
+int main(int argc, const char *argv[]){
+
+    std::vector<string> detectors = {"SHITOMASI","HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+    std::vector<string> descriptors = {"BRISK","BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+    std::vector<string> matchers = {"MAT_BF", "MAT_FLANN"};
+    //std::vector<string> descriptor_types = {"DES_BINARY","DES_HOG"};
+    std::vector<string> selectors = {"SEL_NN","SEL_KNN"};
+    std::ofstream myfile;
+    myfile.open("benchmark.csv");
+    myfile << "DETECTOR,DESCRIPTOR,MATCHER,SELECTOR,FRAME,LIDAR_TTC,CAMERA_TTC\n";
+    
+    double count = 0;
+    double total = detectors.size() * descriptors.size () * matchers.size() * selectors.size();
+    std::cout << "[ " << count << " out of " << total << " ]" << std::endl;
+    for(auto detector:detectors){
+        for(auto descriptor:descriptors){
+            for(auto matcher : matchers){
+                //for(auto descriptor_type: descriptor_types){
+                    for(auto selector:selectors){
+                        std::vector<double> result;
+                        try{
+                            object_tracking(detector,descriptor,matcher, selector, myfile);
+                        }catch(...){
+                            myfile << detector << "," << descriptor << "," << matcher << "," << selector << "," << "Invalid combination" << "\n";
+                        }
+                        count++;
+
+                    }
+               //}
+               std::cout << "[ " << count << " out of " << total << " ]" << std::endl;
+            }
+        }
+    }
+    myfile.close();
     return 0;
+
 }
