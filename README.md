@@ -10,16 +10,55 @@ In this final project, you will implement the missing parts in the schematic. To
 3. You will then proceed to do the same using the camera, which requires to first associate keypoint matches to regions of interest and then to compute the TTC based on those matches. 
 4. And lastly, you will conduct various tests with the framework. Your goal is to identify the most suitable detector/descriptor combination for TTC estimation and also to search for problems that can lead to faulty measurements by the camera or Lidar sensor. In the last course of this Nanodegree, you will learn about the Kalman filter, which is a great way to combine the two independent TTC measurements into an improved version which is much more reliable than a single sensor alone can be. But before we think about such things, let us focus on your final project in the camera course. 
 
-## Key performance impactors for Lidar TTC
+## FP.1 Match 3D Objects
+### Criteria
+Implement the method "matchBoundingBoxes", which takes as input both the previous and the current data frames and provides as output the ids of the matched regions of interest (i.e. the boxID property). Matches must be the ones with the highest number of keypoint correspondences.
+### Code
+[Implementation](/src/camFusion_Student.cpp#L205)
+
+## FP.2 Compute Lidar-based TTC
+### Criteria
+Compute the time-to-collision in second for all matched 3D objects using only Lidar measurements from the matched bounding boxes between current and previous frame.
+### Code
+[Implementation](/src/camFusion_Student.cpp#L192)
+
+## FP.3 Associate Keypoint Correspondences with Bounding Boxes
+### Criteria
+Prepare the TTC computation based on camera measurements by associating keypoint correspondences to the bounding boxes which enclose them. All matches which satisfy this condition must be added to a vector in the respective bounding box.
+### Code
+[Implementation](/src/camFusion_Student.cpp#L135)
+
+## FP.4 Compute Camera-based TTC
+### Criteria
+Compute the time-to-collision in second for all matched 3D objects using only keypoint correspondences from the matched bounding boxes between current and previous frame.
+### Code
+[Implementation](/src/camFusion_Student.cpp#L159)
+
+## FP.5 Performance Evaluation 1
+## Criteria
+Find examples where the TTC estimate of the Lidar sensor does not seem plausible. Describe your observations and provide a sound argumentation why you think this happened.
+
+## Discussion
 Faulty TTC estimation may be caused by the missleading points in the cloud that are not in the end of the vehicle, for example one may use points from vehicle side mirrors as reference for TTC calculation if not filtered properly.
-Similarly, since the image bounding box is quite large it may include the vehicle shadow in the road surface, if there are any remaining Lidar points that were not filtered during road separation it will lead to miss estimation of TTC, results on a estimation whre the vehicle is closer than it really is.
+Similarly, since the image bounding box is quite large it may include the vehicle shadow in the road surface, if there are any remaining Lidar points that were not filtered during road separation it will lead to miss estimation of TTC, results on a estimation where the vehicle is closer than it really is.
 
-## Key performance impactors for Camera TTC
-As in Lidar, portiong of the object bounding box scope may include portion that don't reflect the vehicle movement, for example other object, vehicle, or road may be contatined partially in the vehicle bounding box, and its edges may the them used for the estimatation leading to a faulty TTC.
+Lidar x Camera TTC over frames
+![Lidar x Camera TTC over frames](/build/graph.jpg "Lidar x Camera TTC over frames")
 
-##Keypoint & matchers Performance Analysis
+
+## FP.6 Performance Evaluation 2
+### Criteria
+Run several detector / descriptor combinations and look at the differences in TTC estimation. Find out which methods perform best and also include several examples where camera-based TTC estimation is way off. As with Lidar, describe your observations again and also look into potential reasons.
+
+### Discussion
+[CODE: Loops over all detector/descriptor combinations](/src/FinalProject_Camera.cpp#L321)
+
+[RAW TTCs: Results csv](build/benchmark.csv)
+
+As in Lidar, a portion of the object bounding box may include keypoints that don't reflect the vehicle movement, for example other object, vehicle, or road may be contatined partially in the vehicle bounding box, and its edges may the them used for the estimatation leading to a faulty TTC.
+
 Running over all detectors and descriptors, it is calculate the error of Lidar estimated TTC and Camera estimated TTC, in the table bellow the all frames average error between detector and descriptor is presented.
-Akaze detector with brisk, freak and or orb descriptor presented the top 3 performance, when using error minimization as criteria, thus is the recommendation.
+Akaze detector with brisk, freak and orb descriptor presented the top 3 performances, when using error minimization as criteria, thus is the recommendation.
 
 | error \|CAMERA - LIDAR\| [s] | DESCRIPTOR | <-    | <-    | <-     | <-    | <-   |
 |--------------------------|------------|-------|-------|--------|-------|------|
